@@ -1,6 +1,7 @@
 plugins {
     id "scala"
     id "maven-publish"
+    id "com.github.johnrengelman.shadow" version "7.1.2"
     id "org.embulk.embulk-plugins" version "0.5.5"
     // note: Incompatible because this component declares an API of a component compatible with Java 11 and the consumer needed a runtime of a component compatible with Java 8
     // id "com.diffplug.spotless" version "6.15.0"
@@ -29,17 +30,29 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 dependencies {
-    def embulkVersion = "0.10.41"
+    def embulkVersion = "0.10.43"
     def awsSdkVersion = "1.12.406"
     compileOnly "org.embulk:embulk-api:${embulkVersion}"
     compileOnly "org.embulk:embulk-spi:${embulkVersion}"
     implementation "org.scala-lang:scala-library:2.13.10"
 
     implementation "org.embulk:embulk-util-config:0.3.2"
-    implementation "org.embulk:embulk-util-json:0.1.1"
-    implementation "org.embulk:embulk-util-timestamp:0.2.1"
-    implementation "com.amazonaws:aws-java-sdk-dynamodb:${awsSdkVersion}"
-    implementation "com.amazonaws:aws-java-sdk-sts:${awsSdkVersion}"
+    implementation "org.embulk:embulk-util-json:0.3.0"
+    implementation "org.embulk:embulk-util-timestamp:0.2.2"
+    implementation("com.amazonaws:aws-java-sdk-dynamodb:${awsSdkVersion}") {
+        exclude group: 'com.fasterxml.jackson.core'
+        exclude group: 'com.fasterxml.jackson.dataformat'
+    }
+    implementation("com.amazonaws:aws-java-sdk-sts:${awsSdkVersion}") {
+        exclude group: 'com.fasterxml.jackson.core'
+        exclude group: 'com.fasterxml.jackson.dataformat'
+    }
+    
+    // Use Embulk's Jackson (compileOnly to avoid bundling)
+    compileOnly "com.fasterxml.jackson.core:jackson-core:2.6.7"
+    compileOnly "com.fasterxml.jackson.core:jackson-databind:2.6.7"
+    compileOnly "com.fasterxml.jackson.core:jackson-annotations:2.6.7"
+    compileOnly "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.6.7"
 
     testImplementation "junit:junit:4.+"
     testImplementation "org.embulk:embulk-junit4:${embulkVersion}"
@@ -50,15 +63,47 @@ test {
     jvmArgs '-Xms4g', '-Xmx4g', '-XX:MaxMetaspaceSize=1g'
     maxHeapSize = "4g"
 }
+shadowJar {
+    archiveClassifier.set('')
+    // Exclude Embulk provided dependencies and Jackson (use Embulk's Jackson)
+    dependencies {
+        exclude(dependency('org.embulk:embulk-api'))
+        exclude(dependency('org.embulk:embulk-spi'))
+        exclude(dependency('com.fasterxml.jackson.core:jackson-core'))
+        exclude(dependency('com.fasterxml.jackson.core:jackson-databind'))
+        exclude(dependency('com.fasterxml.jackson.core:jackson-annotations'))
+        exclude(dependency('com.fasterxml.jackson.datatype:jackson-datatype-jdk8'))
+    }
+}
+
 spotless {
     scala {
         scalafmt('3.7.1').configFile('.scalafmt.conf')
     }
 }
+
 embulkPlugin {
     mainClass = "org.embulk.input.dynamodb.DynamodbInputPlugin"
     category = "input"
     type = "dynamodb"
+}
+
+// Use shadowJar output for the gem
+jar {
+    enabled = false
+    dependsOn shadowJar
+}
+
+// Make shadowJar output available as the main artifact
+artifacts {
+    archives shadowJar
+}
+
+// Configure gem task to use shadowJar
+tasks.whenTaskAdded { task ->
+    if (task.name == 'gem') {
+        task.dependsOn shadowJar
+    }
 }
 publishing {
     publications {
