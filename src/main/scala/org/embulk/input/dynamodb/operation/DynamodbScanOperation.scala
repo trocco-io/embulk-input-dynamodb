@@ -4,11 +4,13 @@ import java.util.Optional
 
 import com.amazonaws.services.dynamodbv2.model.{AttributeValue, ScanRequest}
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
-import org.embulk.config.{Config, ConfigDefault, ConfigException}
+import org.embulk.config.ConfigException
+import org.embulk.util.config.{Config, ConfigDefault}
 import org.embulk.input.dynamodb.logger
 
 import scala.jdk.CollectionConverters._
 import scala.util.chaining._
+import scala.annotation.tailrec
 
 object DynamodbScanOperation {
 
@@ -55,6 +57,7 @@ case class DynamodbScanOperation(task: DynamodbScanOperation.Task)
       }
   }
 
+  @tailrec
   private def runInternal(
       dynamodb: AmazonDynamoDB,
       embulkTaskIndex: Int,
@@ -66,21 +69,23 @@ case class DynamodbScanOperation(task: DynamodbScanOperation.Task)
 
     val result =
       dynamodb.scan(newRequest(embulkTaskIndex, lastEvaluatedKey).tap { req =>
-        logger.info(s"Call DynamodbQueryRequest: ${req.toString}")
+        logger.info(s"Call DynamodbScanRequest: ${req.toString}")
       })
     loadableRecords match {
       case Some(v) if (result.getCount > v) =>
         f(result.getItems.asScala.take(v.toInt).map(_.asScala.toMap).toSeq)
       case _ =>
         f(result.getItems.asScala.map(_.asScala.toMap).toSeq)
-        Option(result.getLastEvaluatedKey).foreach { lastEvaluatedKey =>
-          runInternal(
-            dynamodb,
-            embulkTaskIndex,
-            f,
-            lastEvaluatedKey = Option(lastEvaluatedKey.asScala.toMap),
-            loadedRecords = loadedRecords + result.getCount
-          )
+        Option(result.getLastEvaluatedKey) match {
+          case Some(v) =>
+            runInternal(
+              dynamodb,
+              embulkTaskIndex,
+              f,
+              lastEvaluatedKey = Option(v.asScala.toMap),
+              loadedRecords = loadedRecords + result.getCount
+            )
+          case _ => // do nothing
         }
     }
   }
