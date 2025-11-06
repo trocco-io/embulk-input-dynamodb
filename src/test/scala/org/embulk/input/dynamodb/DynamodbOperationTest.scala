@@ -18,8 +18,17 @@ import scala.jdk.CollectionConverters._
 
 class DynamodbOperationTest extends EmbulkTestBase {
 
+  private val runDynamodbOperationTest: Boolean = Option(
+    System.getenv("RUN_DYNAMODB_OPERATION_TEST")
+  ) match {
+    case Some(x) =>
+      if (x == "false") false
+      else true
+    case None => true
+  }
+
   @Test
-  def limitTest(): Unit = {
+  def limitTest(): Unit = if (runDynamodbOperationTest) {
     val tableName = "limit_test"
     cleanupTable(tableName)
     withDynamodb { dynamodb =>
