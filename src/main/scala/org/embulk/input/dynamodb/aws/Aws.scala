@@ -1,10 +1,7 @@
 package org.embulk.input.dynamodb.aws
 
-import com.amazonaws.client.builder.AwsClientBuilder
-import com.amazonaws.services.dynamodbv2.{
-  AmazonDynamoDB,
-  AmazonDynamoDBClientBuilder
-}
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient
+import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder
 import org.embulk.util.config.{Task => EmbulkTask}
 
 object Aws {
@@ -24,23 +21,19 @@ object Aws {
 
 class Aws(task: Aws.Task) {
 
-  def withDynamodb[A](f: AmazonDynamoDB => A): A = {
-    val builder: AmazonDynamoDBClientBuilder =
-      AmazonDynamoDBClientBuilder.standard()
-    AwsDynamodbConfiguration(task).configureAmazonDynamoDBClientBuilder(builder)
-    val svc = createService(builder)
+  def withDynamodb[A](f: DynamoDbClient => A): A = {
+    val builder: DynamoDbClientBuilder = DynamoDbClient.builder()
+
+    AwsEndpointConfiguration(task).configureDynamoDbClientBuilder(builder)
+    AwsClientConfiguration(task).configureDynamoDbClientBuilder(builder)
+    AwsDynamodbConfiguration(task).configureDynamoDbClientBuilder(builder)
+    builder.credentialsProvider(
+      AwsCredentials(task).createAwsCredentialsProvider
+    )
+
+    val svc = builder.build()
     try f(svc)
-    finally svc.shutdown()
-
+    finally svc.close()
   }
 
-  def createService[S <: AwsClientBuilder[S, T], T](
-      builder: AwsClientBuilder[S, T]
-  ): T = {
-    AwsEndpointConfiguration(task).configureAwsClientBuilder(builder)
-    AwsClientConfiguration(task).configureAwsClientBuilder(builder)
-    builder.setCredentials(AwsCredentials(task).createAwsCredentialsProvider)
-
-    builder.build()
-  }
 }

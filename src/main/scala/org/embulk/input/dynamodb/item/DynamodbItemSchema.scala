@@ -2,7 +2,7 @@ package org.embulk.input.dynamodb.item
 
 import java.util.{Optional, List => JList}
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 import com.fasterxml.jackson.annotation.{JsonCreator, JsonValue}
 import org.embulk.util.config.{Config, ConfigDefault, Task => EmbulkTask}
 import org.embulk.spi.{Column, PageBuilder, Schema}

@@ -1,6 +1,6 @@
 package org.embulk.input.dynamodb
 
-import com.amazonaws.services.dynamodbv2.model.{
+import software.amazon.awssdk.services.dynamodb.model.{
   AttributeDefinition,
   AttributeValue,
   BillingMode,
@@ -33,74 +33,80 @@ class DynamodbOperationTest extends EmbulkTestBase {
     cleanupTable(tableName)
     withDynamodb { dynamodb =>
       dynamodb.createTable(
-        new CreateTableRequest()
-          .withTableName(tableName)
-          .withAttributeDefinitions(
-            new AttributeDefinition()
-              .withAttributeName("pk")
-              .withAttributeType(ScalarAttributeType.S)
+        CreateTableRequest
+          .builder()
+          .tableName(tableName)
+          .attributeDefinitions(
+            AttributeDefinition
+              .builder()
+              .attributeName("pk")
+              .attributeType(ScalarAttributeType.S)
+              .build()
           )
-          .withKeySchema(
-            new KeySchemaElement()
-              .withAttributeName("pk")
-              .withKeyType(KeyType.HASH)
+          .keySchema(
+            KeySchemaElement
+              .builder()
+              .attributeName("pk")
+              .keyType(KeyType.HASH)
+              .build()
           )
-          .withBillingMode(BillingMode.PAY_PER_REQUEST)
+          .billingMode(BillingMode.PAY_PER_REQUEST)
+          .build()
       )
       dynamodb.putItem(
-        new PutItemRequest()
-          .withTableName(tableName)
-          .withItem(
-            Map
-              .newBuilder[String, AttributeValue]
-              .addOne("pk", new AttributeValue().withS("a"))
-              .result()
-              .asJava
+        PutItemRequest
+          .builder()
+          .tableName(tableName)
+          .item(
+            Map(
+              "pk" -> AttributeValue.builder().s("a").build()
+            ).asJava
           )
+          .build()
       )
       dynamodb.putItem(
-        new PutItemRequest()
-          .withTableName(tableName)
-          .withItem(
-            Map
-              .newBuilder[String, AttributeValue]
-              .addOne("pk", new AttributeValue().withS("a"))
-              .result()
-              .asJava
+        PutItemRequest
+          .builder()
+          .tableName(tableName)
+          .item(
+            Map(
+              "pk" -> AttributeValue.builder().s("a").build()
+            ).asJava
           )
+          .build()
       )
       dynamodb.putItem(
-        new PutItemRequest()
-          .withTableName(tableName)
-          .withItem(
-            Map
-              .newBuilder[String, AttributeValue]
-              .addOne("pk", new AttributeValue().withS("a"))
-              .result()
-              .asJava
+        PutItemRequest
+          .builder()
+          .tableName(tableName)
+          .item(
+            Map(
+              "pk" -> AttributeValue.builder().s("a").build()
+            ).asJava
           )
+          .build()
       )
       dynamodb.putItem(
-        new PutItemRequest()
-          .withTableName(tableName)
-          .withItem(
-            Map
-              .newBuilder[String, AttributeValue]
-              .addOne("pk", new AttributeValue().withS("b"))
-              .result()
-              .asJava
+        PutItemRequest
+          .builder()
+          .tableName(tableName)
+          .item(
+            Map(
+              "pk" -> AttributeValue.builder().s("b").build()
+            ).asJava
           )
+          .build()
       )
       dynamodb.putItem(
-        new PutItemRequest()
-          .withTableName(tableName)
-          .withItem(
-            Map
-              .newBuilder[String, AttributeValue]
-              .addOne("pk", new AttributeValue().withS("b"))
-              .result()
-              .asJava
+        PutItemRequest
+          .builder()
+          .tableName(tableName)
+          .item(
+            Map(
+              "pk" -> AttributeValue.builder().s("b").build()
+            ).asJava
           )
+          .build()
       )
     }
 

@@ -31,7 +31,7 @@ targetCompatibility = 1.8
 
 dependencies {
     def embulkVersion = "0.10.43"
-    def awsSdkVersion = "1.12.406"
+    def awsSdkVersion = "2.20.26"
     compileOnly "org.embulk:embulk-api:${embulkVersion}"
     compileOnly "org.embulk:embulk-spi:${embulkVersion}"
     implementation "org.scala-lang:scala-library:2.13.10"
@@ -39,11 +39,15 @@ dependencies {
     implementation "org.embulk:embulk-util-config:0.3.2"
     implementation "org.embulk:embulk-util-json:0.3.0"
     implementation "org.embulk:embulk-util-timestamp:0.2.2"
-    implementation("com.amazonaws:aws-java-sdk-dynamodb:${awsSdkVersion}") {
+    implementation("software.amazon.awssdk:dynamodb:${awsSdkVersion}") {
         exclude group: 'com.fasterxml.jackson.core'
         exclude group: 'com.fasterxml.jackson.dataformat'
     }
-    implementation("com.amazonaws:aws-java-sdk-sts:${awsSdkVersion}") {
+    implementation("software.amazon.awssdk:sts:${awsSdkVersion}") {
+        exclude group: 'com.fasterxml.jackson.core'
+        exclude group: 'com.fasterxml.jackson.dataformat'
+    }
+    implementation("software.amazon.awssdk:apache-client:${awsSdkVersion}") {
         exclude group: 'com.fasterxml.jackson.core'
         exclude group: 'com.fasterxml.jackson.dataformat'
     }

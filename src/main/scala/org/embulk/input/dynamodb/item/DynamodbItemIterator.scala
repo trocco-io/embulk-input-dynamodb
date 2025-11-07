@@ -1,6 +1,6 @@
 package org.embulk.input.dynamodb.item
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 
 object DynamodbItemIterator {
 

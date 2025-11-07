@@ -1,11 +1,12 @@
 package org.embulk.input.dynamodb.testutil
 
-import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
-import com.amazonaws.services.dynamodbv2.{
-  AmazonDynamoDB,
-  AmazonDynamoDBClientBuilder
+import software.amazon.awssdk.auth.credentials.{
+  AwsBasicCredentials,
+  StaticCredentialsProvider
 }
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.dynamodb.{DynamoDbClient}
+import java.net.URI
 import org.embulk.config.{ConfigLoader, ConfigSource, TaskReport, TaskSource}
 import org.embulk.input.dynamodb.DynamodbInputPlugin
 import org.embulk.spi.Schema
@@ -22,31 +23,28 @@ trait EmbulkTestBase {
   val dynamoDBHost: String = "localhost"
   val dynamoDBPort: Int = 8000
 
-  def withDynamodb[A](f: AmazonDynamoDB => A): A = {
-    AmazonDynamoDBClientBuilder
-      .standard()
-      .withEndpointConfiguration(
-        new EndpointConfiguration(
-          s"http://$dynamoDBHost:$dynamoDBPort",
-          "us-east-1"
-        )
-      )
-      .withCredentials(
-        new AWSStaticCredentialsProvider(
-          new BasicAWSCredentials("dummy", "dummy")
+  def withDynamodb[A](f: DynamoDbClient => A): A = {
+    DynamoDbClient
+      .builder()
+      .endpointOverride(URI.create(s"http://$dynamoDBHost:$dynamoDBPort"))
+      .region(Region.US_EAST_1)
+      .credentialsProvider(
+        StaticCredentialsProvider.create(
+          AwsBasicCredentials.create("dummy", "dummy")
         )
       )
       .build()
       .pipe { client =>
         try f(client)
-        finally client.shutdown()
+        finally client.close()
       }
   }
 
   def cleanupTable(name: String): Unit = {
     withDynamodb { dynamodb =>
-      Try(dynamodb.describeTable(name)) match {
-        case Success(_) => dynamodb.deleteTable(name)
+      Try(dynamodb.describeTable(builder => builder.tableName(name))) match {
+        case Success(_) =>
+          dynamodb.deleteTable(builder => builder.tableName(name))
         case Failure(_) => // Do nothing.
       }
     }

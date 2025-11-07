@@ -1,8 +1,9 @@
 package org.embulk.input.dynamodb.aws
 
 import java.util.Optional
+import java.net.URI
 
-import com.amazonaws.{ClientConfiguration, Protocol}
+import software.amazon.awssdk.http.apache.ProxyConfiguration
 import org.embulk.config.ConfigException
 import org.embulk.util.config.{Task => EmbulkTask, Config, ConfigDefault}
 import org.embulk.input.dynamodb.aws.HttpProxy.Task
@@ -41,22 +42,23 @@ object HttpProxy {
 
 class HttpProxy(task: Task) {
 
-  def configureClientConfiguration(cc: ClientConfiguration): Unit = {
-    task.getHost.ifPresent(v => cc.setProxyHost(v))
-    task.getPort.ifPresent(v => cc.setProxyPort(v))
+  def configureProxyConfiguration(): ProxyConfiguration.Builder = {
+    val builder = ProxyConfiguration.builder()
 
-    Protocol.values.find(p => p.name().equals(task.getProtocol)) match {
-      case Some(v) =>
-        cc.setProtocol(v)
-      case None =>
-        throw new ConfigException(
-          s"'${task.getProtocol}' is unsupported: `protocol` must be one of [${Protocol.values
-              .map(v => s"'$v'")
-              .mkString(", ")}]."
-        )
+    if (task.getHost.isPresent && task.getPort.isPresent) {
+      val proxyEndpoint =
+        s"${task.getProtocol}://${task.getHost.get}:${task.getPort.get}"
+      builder.endpoint(URI.create(proxyEndpoint))
+    }
+    else if (task.getHost.isPresent) {
+      throw new ConfigException(
+        "Both 'host' and 'port' must be set for proxy configuration"
+      )
     }
 
-    task.getUser.ifPresent(v => cc.setProxyUsername(v))
-    task.getPassword.ifPresent(v => cc.setProxyPassword(v))
+    task.getUser.ifPresent(v => builder.username(v))
+    task.getPassword.ifPresent(v => builder.password(v))
+
+    builder
   }
 }

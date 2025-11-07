@@ -2,7 +2,8 @@ package org.embulk.input.dynamodb.aws
 
 import java.util.Optional
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient
+import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder
 import org.embulk.util.config.{Config, ConfigDefault, Task => EmbulkTask}
 import org.embulk.input.dynamodb.aws.AwsDynamodbConfiguration.Task
 
@@ -23,12 +24,11 @@ object AwsDynamodbConfiguration {
 
 class AwsDynamodbConfiguration(task: Task) {
 
-  def configureAmazonDynamoDBClientBuilder(
-      builder: AmazonDynamoDBClientBuilder
+  def configureDynamoDbClientBuilder(
+      builder: DynamoDbClientBuilder
   ): Unit = {
     task.getEnableEndpointDiscovery.ifPresent { v =>
-      if (v) builder.enableEndpointDiscovery()
-      else builder.disableEndpointDiscovery()
+      builder.endpointDiscoveryEnabled(v)
     }
   }
 

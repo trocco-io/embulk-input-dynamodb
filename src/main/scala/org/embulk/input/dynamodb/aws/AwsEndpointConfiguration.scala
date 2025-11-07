@@ -1,10 +1,12 @@
 package org.embulk.input.dynamodb.aws
 
 import java.util.Optional
+import java.net.URI
 
-import com.amazonaws.client.builder.AwsClientBuilder
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
-import com.amazonaws.regions.{DefaultAwsRegionProviderChain, Regions}
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient
+import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain
 import org.embulk.config.ConfigException
 import org.embulk.util.config.{Task => EmbulkTask, Config, ConfigDefault}
 import org.embulk.input.dynamodb.aws.AwsEndpointConfiguration.Task
@@ -31,23 +33,27 @@ object AwsEndpointConfiguration {
 
 class AwsEndpointConfiguration(task: Task) {
 
-  def configureAwsClientBuilder[S <: AwsClientBuilder[S, T], T](
-      builder: AwsClientBuilder[S, T]
+  def configureDynamoDbClientBuilder(
+      builder: DynamoDbClientBuilder
   ): Unit = {
     if (task.getRegion.isPresent && task.getEndpoint.isPresent) {
-      val ec =
-        new EndpointConfiguration(task.getEndpoint.get, task.getRegion.get)
-      builder.setEndpointConfiguration(ec)
+      builder.region(Region.of(task.getRegion.get))
+      builder.endpointOverride(URI.create(task.getEndpoint.get))
     }
     else if (task.getRegion.isPresent && !task.getEndpoint.isPresent) {
-      builder.setRegion(task.getRegion.get)
+      builder.region(Region.of(task.getRegion.get))
     }
     else if (!task.getRegion.isPresent && task.getEndpoint.isPresent) {
-      val r: String = Try(new DefaultAwsRegionProviderChain().getRegion)
-        .getOrElse(Regions.DEFAULT_REGION.getName)
-      val e: String = task.getEndpoint.get
-      val ec = new EndpointConfiguration(e, r)
-      builder.setEndpointConfiguration(ec)
+      val r: Region = Try(new DefaultAwsRegionProviderChain().getRegion)
+        .getOrElse(Region.US_EAST_1)
+      builder.region(r)
+      builder.endpointOverride(URI.create(task.getEndpoint.get))
+    }
+    else {
+      // Use default region from provider chain
+      val r: Region = Try(new DefaultAwsRegionProviderChain().getRegion)
+        .getOrElse(Region.US_EAST_1)
+      builder.region(r)
     }
   }
 

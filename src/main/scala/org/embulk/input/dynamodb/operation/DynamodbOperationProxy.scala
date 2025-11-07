@@ -2,8 +2,8 @@ package org.embulk.input.dynamodb.operation
 
 import java.util.Optional
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import org.embulk.config.ConfigException
 import org.embulk.util.config.{Config, ConfigDefault, Task => EmbulkTask}
 import org.embulk.input.dynamodb.operation.{
@@ -53,7 +53,7 @@ case class DynamodbOperationProxy(task: DynamodbOperationProxy.Task)
   override def getEmbulkTaskCount: Int = operation.getEmbulkTaskCount
 
   override def run(
-      dynamodb: AmazonDynamoDB,
+      dynamodb: DynamoDbClient,
       embulkTaskIndex: Int,
       f: Seq[Map[String, AttributeValue]] => Unit
   ): Unit = operation.run(dynamodb, embulkTaskIndex, f)
