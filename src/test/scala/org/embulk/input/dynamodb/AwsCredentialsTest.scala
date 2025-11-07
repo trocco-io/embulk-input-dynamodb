@@ -1,6 +1,7 @@
 package org.embulk.input.dynamodb
 
-import com.amazonaws.services.securitytoken.model.AWSSecurityTokenServiceException
+import software.amazon.awssdk.core.exception.SdkClientException
+import software.amazon.awssdk.services.sts.model.StsException
 import org.embulk.config.{ConfigSource, ConfigException}
 import org.embulk.input.dynamodb.aws.AwsCredentials
 import org.embulk.input.dynamodb.testutil.EmbulkTestBase
@@ -38,9 +39,9 @@ class AwsCredentialsTest extends EmbulkTestBase {
   def doTest(inConfig: ConfigSource): Unit = {
     val task: PluginTask = PluginTask.load(inConfig)
     val provider = AwsCredentials(task).createAwsCredentialsProvider
-    val cred = provider.getCredentials
-    assertThat(cred.getAWSAccessKeyId, notNullValue())
-    assertThat(cred.getAWSSecretKey, notNullValue())
+    val cred = provider.resolveCredentials()
+    assertThat(cred.accessKeyId(), notNullValue())
+    assertThat(cred.secretAccessKey(), notNullValue())
   }
 
   def defaultInConfig: ConfigSource = {
@@ -114,7 +115,7 @@ class AwsCredentialsTest extends EmbulkTestBase {
       .set("profile_name", "DO_NOT_EXIST")
 
     Assert.assertThrows(
-      classOf[IllegalArgumentException],
+      classOf[SdkClientException],
       () => {
         doTest(inConfig)
       }
@@ -140,7 +141,7 @@ class AwsCredentialsTest extends EmbulkTestBase {
         .set("role_session_name", "dummy")
 
       Assert.assertThrows(
-        classOf[AWSSecurityTokenServiceException],
+        classOf[StsException],
         () => {
           doTest(inConfig)
         }

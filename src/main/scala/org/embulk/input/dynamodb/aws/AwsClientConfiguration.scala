@@ -2,8 +2,9 @@ package org.embulk.input.dynamodb.aws
 
 import java.util.Optional
 
-import com.amazonaws.ClientConfiguration
-import com.amazonaws.client.builder.AwsClientBuilder
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient
+import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder
+import software.amazon.awssdk.http.apache.ApacheHttpClient
 import org.embulk.util.config.{Config, ConfigDefault, Task => EmbulkTask}
 import org.embulk.input.dynamodb.aws.AwsClientConfiguration.Task
 
@@ -24,13 +25,16 @@ object AwsClientConfiguration {
 
 class AwsClientConfiguration(task: Task) {
 
-  def configureAwsClientBuilder[S <: AwsClientBuilder[S, T], T](
-      builder: AwsClientBuilder[S, T]
+  def configureDynamoDbClientBuilder(
+      builder: DynamoDbClientBuilder
   ): Unit = {
     task.getHttpProxy.ifPresent { v =>
-      val cc = new ClientConfiguration
-      HttpProxy(v).configureClientConfiguration(cc)
-      builder.setClientConfiguration(cc)
+      val proxyConfig = HttpProxy(v).configureProxyConfiguration().build()
+      val httpClient = ApacheHttpClient
+        .builder()
+        .proxyConfiguration(proxyConfig)
+        .build()
+      builder.httpClient(httpClient)
     }
   }
 

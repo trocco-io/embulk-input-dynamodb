@@ -1,8 +1,8 @@
 package org.embulk.input.dynamodb.item
 
-import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
+import software.amazon.awssdk.core.SdkBytes
 import org.embulk.input.dynamodb.logger
 import org.embulk.spi.time.Timestamp
 import org.embulk.util.timestamp.TimestampFormatter
@@ -65,8 +65,8 @@ case class DynamodbAttributeValueEmbulkTypeTransformable(
     }
   }
 
-  private def convertBAsString(b: ByteBuffer): String = {
-    new String(b.array(), StandardCharsets.UTF_8)
+  private def convertBAsString(b: SdkBytes): String = {
+    new String(b.asByteArray(), StandardCharsets.UTF_8)
   }
 
   private def hasAttributeValueType: Boolean = {
@@ -86,7 +86,7 @@ case class DynamodbAttributeValueEmbulkTypeTransformable(
           case Right(v) => ValueFactory.newFloat(v)
         }
       case DynamodbAttributeValueType.B =>
-        ValueFactory.newBinary(attributeValue.getB.array())
+        ValueFactory.newBinary(attributeValue.getB.asByteArray())
       case DynamodbAttributeValueType.SS =>
         ValueFactory.newArray(
           attributeValue.getSS.asScala.map(ValueFactory.newString).asJava
@@ -103,7 +103,7 @@ case class DynamodbAttributeValueEmbulkTypeTransformable(
       case DynamodbAttributeValueType.BS =>
         ValueFactory.newArray(
           attributeValue.getBS.asScala
-            .map(b => ValueFactory.newBinary(b.array()))
+            .map(b => ValueFactory.newBinary(b.asByteArray()))
             .asJava
         )
       case DynamodbAttributeValueType.M =>

@@ -8,7 +8,7 @@ import java.lang.{
 }
 import java.util.{Optional, Map => JMap}
 
-import com.amazonaws.services.dynamodbv2.model.{
+import software.amazon.awssdk.services.dynamodb.model.{
   AttributeValue,
   ReturnConsumedCapacity,
   Select
@@ -90,17 +90,17 @@ object AbstractDynamodbOperation {
   }
 
   type RequestBuilderMethods = {
-    def setConsistentRead(v: JBoolean): Unit
-    def setExclusiveStartKey(v: JMap[JString, AttributeValue]): Unit
-    def setExpressionAttributeNames(v: JMap[JString, JString]): Unit
-    def setExpressionAttributeValues(v: JMap[JString, AttributeValue]): Unit
-    def setFilterExpression(v: JString): Unit
-    def setIndexName(v: JString): Unit
-    def setLimit(v: JInteger): Unit
-    def setProjectionExpression(v: JString): Unit
-    def setReturnConsumedCapacity(v: ReturnConsumedCapacity): Unit
-    def setSelect(v: Select): Unit
-    def setTableName(v: JString): Unit
+    def consistentRead(v: JBoolean): Any
+    def exclusiveStartKey(v: JMap[JString, AttributeValue]): Any
+    def expressionAttributeNames(v: JMap[JString, JString]): Any
+    def expressionAttributeValues(v: JMap[JString, AttributeValue]): Any
+    def filterExpression(v: JString): Any
+    def indexName(v: JString): Any
+    def limit(v: JInteger): Any
+    def projectionExpression(v: JString): Any
+    def returnConsumedCapacity(v: ReturnConsumedCapacity): Any
+    def select(v: Select): Any
+    def tableName(v: JString): Any
   }
 
 }
@@ -128,12 +128,12 @@ abstract class AbstractDynamodbOperation(
       (x._1, DynamodbAttributeValue(x._2).getOriginal)
     }
 
-    req.setConsistentRead(task.getConsistentRead)
+    req.consistentRead(task.getConsistentRead)
     lastEvaluatedKey match {
-      case Some(v) => req.setExclusiveStartKey(v.asJava)
+      case Some(v) => req.exclusiveStartKey(v.asJava)
       case None =>
         if (!task.getExclusiveStartKey.isEmpty)
-          req.setExclusiveStartKey(
+          req.exclusiveStartKey(
             task.getExclusiveStartKey.asScala
               .map(attributeValueTaskToAttributeValue)
               .asJava
@@ -141,27 +141,27 @@ abstract class AbstractDynamodbOperation(
     }
 
     if (!task.getExpressionAttributeNames.isEmpty)
-      req.setExpressionAttributeNames(task.getExpressionAttributeNames)
+      req.expressionAttributeNames(task.getExpressionAttributeNames)
     if (!task.getExpressionAttributeValues.isEmpty)
-      req.setExpressionAttributeValues(
+      req.expressionAttributeValues(
         task.getExpressionAttributeValues.asScala
           .map(attributeValueTaskToAttributeValue)
           .asJava
       )
-    task.getFilterExpression.ifPresent(req.setFilterExpression)
-    task.getIndexName.ifPresent(req.setIndexName)
+    task.getFilterExpression.ifPresent(req.filterExpression)
+    task.getIndexName.ifPresent(req.indexName)
     task.getBatchSize.ifPresent { v =>
       if (v <= 0)
         throw new ConfigException(
           "\"batch_size\" must be greater than or equal to 1."
         )
-      req.setLimit(
+      req.limit(
         JInteger.valueOf(v)
       ) // Note: Use BatchSize for the limit per a request.
     }
-    task.getProjectionExpression.ifPresent(req.setProjectionExpression)
-    task.getReturnConsumedCapacity.ifPresent(req.setReturnConsumedCapacity)
-    task.getSelect.ifPresent(req.setSelect)
-    req.setTableName(task.getTableName)
+    task.getProjectionExpression.ifPresent(req.projectionExpression)
+    task.getReturnConsumedCapacity.ifPresent(req.returnConsumedCapacity)
+    task.getSelect.ifPresent(req.select)
+    req.tableName(task.getTableName)
   }
 }

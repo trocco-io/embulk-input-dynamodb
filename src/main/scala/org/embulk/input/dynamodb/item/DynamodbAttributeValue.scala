@@ -4,15 +4,16 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.util.{Optional, List => JList, Map => JMap}
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue
+import software.amazon.awssdk.core.SdkBytes
 import org.embulk.util.config.{Config, ConfigDefault, Task => EmbulkTask}
 
 import scala.jdk.CollectionConverters._
 import scala.util.chaining._
 
 /** TODO: I want to bind directly `org.embulk.util.config.Config`` to
-  * `com.amazonaws.services.dynamodbv2.model.AttributeValue`. Should I implement
-  * `com.amazonaws.transform.JsonUnmarshallerContext`?
+  * `software.amazon.awssdk.services.dynamodb.model.AttributeValue`. Should I
+  * implement a custom unmarshaller?
   */
 object DynamodbAttributeValue {
 
@@ -60,38 +61,50 @@ object DynamodbAttributeValue {
   }
 
   def apply(task: Task): DynamodbAttributeValue = {
-    val original = new AttributeValue()
-      .tap(a => task.getS.ifPresent(v => a.setS(v)))
-      .tap(a => task.getN.ifPresent(v => a.setN(v)))
-      .tap { a =>
-        task.getB.ifPresent { v =>
-          a.setB(ByteBuffer.wrap(v.getBytes(StandardCharsets.UTF_8)))
-        }
-      }
-      .tap(a => task.getSS.ifPresent(v => a.setSS(v)))
-      .tap(a => task.getNS.ifPresent(v => a.setNS(v)))
-      .tap { a =>
-        task.getBS.ifPresent { v =>
-          a.setBS(
-            v.asScala
-              .map(e => ByteBuffer.wrap(e.getBytes(StandardCharsets.UTF_8)))
-              .asJava
-          )
-        }
-      }
-      .tap { a =>
-        task.getM.ifPresent { v =>
-          a.setM(v.asScala.map(x => (x._1, apply(x._2).getOriginal)).asJava)
-        }
-      }
-      .tap(a =>
-        task.getL.ifPresent(v =>
-          a.setL(v.asScala.map(apply).map(_.getOriginal).asJava)
-        )
+    val builder = AttributeValue.builder()
+
+    if (task.getS.isPresent) {
+      builder.s(task.getS.get)
+    }
+    else if (task.getN.isPresent) {
+      builder.n(task.getN.get)
+    }
+    else if (task.getB.isPresent) {
+      builder.b(
+        SdkBytes.fromByteArray(task.getB.get.getBytes(StandardCharsets.UTF_8))
       )
-      .tap(a => task.getNULL.ifPresent(v => a.setNULL(v)))
-      .tap(a => task.getBOOL.ifPresent(v => a.setBOOL(v)))
-    new DynamodbAttributeValue(original)
+    }
+    else if (task.getSS.isPresent) {
+      builder.ss(task.getSS.get)
+    }
+    else if (task.getNS.isPresent) {
+      builder.ns(task.getNS.get)
+    }
+    else if (task.getBS.isPresent) {
+      builder.bs(
+        task.getBS.get.asScala
+          .map(e => SdkBytes.fromByteArray(e.getBytes(StandardCharsets.UTF_8)))
+          .asJava
+      )
+    }
+    else if (task.getM.isPresent) {
+      builder.m(
+        task.getM.get.asScala.map(x => (x._1, apply(x._2).getOriginal)).asJava
+      )
+    }
+    else if (task.getL.isPresent) {
+      builder.l(
+        task.getL.get.asScala.map(apply).map(_.getOriginal).asJava
+      )
+    }
+    else if (task.getNULL.isPresent) {
+      builder.nul(task.getNULL.get)
+    }
+    else if (task.getBOOL.isPresent) {
+      builder.bool(task.getBOOL.get)
+    }
+
+    new DynamodbAttributeValue(builder.build())
   }
 
   def apply(original: AttributeValue): DynamodbAttributeValue = {
@@ -99,7 +112,7 @@ object DynamodbAttributeValue {
   }
 
   def apply(item: Map[String, AttributeValue]): DynamodbAttributeValue = {
-    val original = new AttributeValue().withM(item.asJava)
+    val original = AttributeValue.builder().m(item.asJava).build()
     new DynamodbAttributeValue(original)
   }
 }
@@ -116,27 +129,27 @@ class DynamodbAttributeValue(original: AttributeValue) {
   )
 
   def getOriginal: AttributeValue = original
-  def isNull: Boolean = Option[Boolean](getOriginal.getNULL).getOrElse(false)
-  def hasS: Boolean = Option(getOriginal.getS).isDefined
-  def hasN: Boolean = Option(getOriginal.getN).isDefined
-  def hasB: Boolean = Option(getOriginal.getB).isDefined
-  def hasSS: Boolean = Option(getOriginal.getSS).isDefined
-  def hasNS: Boolean = Option(getOriginal.getNS).isDefined
-  def hasBS: Boolean = Option(getOriginal.getBS).isDefined
-  def hasM: Boolean = Option(getOriginal.getM).isDefined
-  def hasL: Boolean = Option(getOriginal.getL).isDefined
-  def hasNULL: Boolean = Option(getOriginal.getNULL).isDefined
-  def hasBOOL: Boolean = Option(getOriginal.getBOOL).isDefined
-  def getS: String = getOriginal.getS
-  def getN: String = getOriginal.getN
-  def getB: ByteBuffer = getOriginal.getB
-  def getSS: JList[String] = getOriginal.getSS
-  def getNS: JList[String] = getOriginal.getNS
-  def getBS: JList[ByteBuffer] = getOriginal.getBS
-  def getM: JMap[String, AttributeValue] = getOriginal.getM
-  def getL: JList[AttributeValue] = getOriginal.getL
-  def getNULL: Boolean = getOriginal.getNULL
-  def getBOOL: Boolean = getOriginal.getBOOL
+  def isNull: Boolean = Option[Boolean](getOriginal.nul).getOrElse(false)
+  def hasS: Boolean = getOriginal.s != null
+  def hasN: Boolean = getOriginal.n != null
+  def hasB: Boolean = getOriginal.b != null
+  def hasSS: Boolean = getOriginal.hasSs
+  def hasNS: Boolean = getOriginal.hasNs
+  def hasBS: Boolean = getOriginal.hasBs
+  def hasM: Boolean = getOriginal.hasM
+  def hasL: Boolean = getOriginal.hasL
+  def hasNULL: Boolean = getOriginal.nul != null
+  def hasBOOL: Boolean = getOriginal.bool != null
+  def getS: String = getOriginal.s
+  def getN: String = getOriginal.n
+  def getB: SdkBytes = getOriginal.b
+  def getSS: JList[String] = getOriginal.ss
+  def getNS: JList[String] = getOriginal.ns
+  def getBS: JList[SdkBytes] = getOriginal.bs
+  def getM: JMap[String, AttributeValue] = getOriginal.m
+  def getL: JList[AttributeValue] = getOriginal.l
+  def getNULL: Boolean = getOriginal.nul
+  def getBOOL: Boolean = getOriginal.bool
 
   def getType: DynamodbAttributeValueType = {
     if (hasS) return DynamodbAttributeValueType.S

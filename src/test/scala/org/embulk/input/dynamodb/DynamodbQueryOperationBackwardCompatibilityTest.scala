@@ -1,6 +1,6 @@
 package org.embulk.input.dynamodb
 
-import com.amazonaws.services.dynamodbv2.model.{
+import software.amazon.awssdk.services.dynamodb.model.{
   AttributeDefinition,
   AttributeValue,
   CreateTableRequest,
@@ -25,65 +25,75 @@ class DynamodbQueryOperationBackwardCompatibilityTest extends EmbulkTestBase {
     cleanupTable("EMBULK_DYNAMODB_TEST_TABLE")
     withDynamodb { dynamodb =>
       dynamodb.createTable(
-        new CreateTableRequest()
-          .withTableName("EMBULK_DYNAMODB_TEST_TABLE")
-          .withAttributeDefinitions(
-            new AttributeDefinition()
-              .withAttributeName("pri-key")
-              .withAttributeType(ScalarAttributeType.S),
-            new AttributeDefinition()
-              .withAttributeName("sort-key")
-              .withAttributeType(ScalarAttributeType.N)
+        CreateTableRequest
+          .builder()
+          .tableName("EMBULK_DYNAMODB_TEST_TABLE")
+          .attributeDefinitions(
+            AttributeDefinition
+              .builder()
+              .attributeName("pri-key")
+              .attributeType(ScalarAttributeType.S)
+              .build(),
+            AttributeDefinition
+              .builder()
+              .attributeName("sort-key")
+              .attributeType(ScalarAttributeType.N)
+              .build()
           )
-          .withKeySchema(
-            new KeySchemaElement()
-              .withAttributeName("pri-key")
-              .withKeyType(KeyType.HASH),
-            new KeySchemaElement()
-              .withAttributeName("sort-key")
-              .withKeyType(KeyType.RANGE)
+          .keySchema(
+            KeySchemaElement
+              .builder()
+              .attributeName("pri-key")
+              .keyType(KeyType.HASH)
+              .build(),
+            KeySchemaElement
+              .builder()
+              .attributeName("sort-key")
+              .keyType(KeyType.RANGE)
+              .build()
           )
-          .withProvisionedThroughput(
-            new ProvisionedThroughput()
-              .withReadCapacityUnits(5L)
-              .withWriteCapacityUnits(5L)
+          .provisionedThroughput(
+            ProvisionedThroughput
+              .builder()
+              .readCapacityUnits(5L)
+              .writeCapacityUnits(5L)
+              .build()
           )
+          .build()
       )
 
       dynamodb.putItem(
-        new PutItemRequest()
-          .withTableName("EMBULK_DYNAMODB_TEST_TABLE")
-          .withItem(
-            Map
-              .newBuilder[String, AttributeValue]
-              .addOne("pri-key", new AttributeValue().withS("key-1"))
-              .addOne("sort-key", new AttributeValue().withN("0"))
-              .addOne("doubleValue", new AttributeValue().withN("42.195"))
-              .addOne("boolValue", new AttributeValue().withBOOL(true))
-              .addOne(
-                "listValue",
-                new AttributeValue().withL(
-                  new AttributeValue().withS("list-value"),
-                  new AttributeValue().withN("123")
+        PutItemRequest
+          .builder()
+          .tableName("EMBULK_DYNAMODB_TEST_TABLE")
+          .item(
+            Map(
+              "pri-key" -> AttributeValue.builder().s("key-1").build(),
+              "sort-key" -> AttributeValue.builder().n("0").build(),
+              "doubleValue" -> AttributeValue.builder().n("42.195").build(),
+              "boolValue" -> AttributeValue.builder().bool(true).build(),
+              "listValue" -> AttributeValue
+                .builder()
+                .l(
+                  AttributeValue.builder().s("list-value").build(),
+                  AttributeValue.builder().n("123").build()
                 )
-              )
-              .addOne(
-                "mapValue",
-                new AttributeValue().withM(
-                  Map
-                    .newBuilder[String, AttributeValue]
-                    .addOne(
-                      "map-key-1",
-                      new AttributeValue().withS("map-value-1")
-                    )
-                    .addOne("map-key-2", new AttributeValue().withN("456"))
-                    .result()
-                    .asJava
+                .build(),
+              "mapValue" -> AttributeValue
+                .builder()
+                .m(
+                  Map(
+                    "map-key-1" -> AttributeValue
+                      .builder()
+                      .s("map-value-1")
+                      .build(),
+                    "map-key-2" -> AttributeValue.builder().n("456").build()
+                  ).asJava
                 )
-              )
-              .result()
-              .asJava
+                .build()
+            ).asJava
           )
+          .build()
       )
     }
 
