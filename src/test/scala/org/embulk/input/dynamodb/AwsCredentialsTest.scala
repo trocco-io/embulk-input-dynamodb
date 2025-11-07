@@ -1,5 +1,6 @@
 package org.embulk.input.dynamodb
 
+import software.amazon.awssdk.core.exception.SdkClientException
 import software.amazon.awssdk.services.sts.model.StsException
 import org.embulk.config.{ConfigSource, ConfigException}
 import org.embulk.input.dynamodb.aws.AwsCredentials
@@ -114,7 +115,7 @@ class AwsCredentialsTest extends EmbulkTestBase {
       .set("profile_name", "DO_NOT_EXIST")
 
     Assert.assertThrows(
-      classOf[IllegalArgumentException],
+      classOf[SdkClientException],
       () => {
         doTest(inConfig)
       }
