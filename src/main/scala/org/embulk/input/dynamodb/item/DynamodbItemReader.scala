@@ -53,10 +53,11 @@ case class DynamodbItemReader(
       .get(column.getName)
       .flatMap(v => getTransformable(column.getName, v).asDouble)
 
-  def getTimestamp(column: Column): Option[Instant] =
+  def getTimestamp(column: Column): Option[Timestamp] =
     currentItem
       .get(column.getName)
       .flatMap(v => getTransformable(column.getName, v).asTimestamp)
+      .map(instant => Timestamp.ofInstant(instant))
 
   def getJson(column: Column): Option[Value] =
     currentItem
